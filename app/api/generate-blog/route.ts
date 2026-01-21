@@ -1,6 +1,9 @@
+export const runtime = "nodejs";
+
+import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { execSync } from "child_process";
+import slugify from "slugify";
 
 export async function POST(req: Request) {
   try {
@@ -9,108 +12,86 @@ export async function POST(req: Request) {
     const {
       title,
       description,
-      writingStyle,
-      tone,
-      length,
-      audience
+      audience = "",
+      tone = "Informative",
+      length = "medium",
     } = body;
+
+    if (!title || !description) {
+      return NextResponse.json(
+        { error: "Title and description are required" },
+        { status: 400 }
+      );
+    }
+
+    const slug = slugify(title, {
+      lower: true,
+      strict: true,
+      trim: true,
+    });
+
+    const blogsDir = path.join(process.cwd(), "content", "blogs", "dev");
+    fs.mkdirSync(blogsDir, { recursive: true });
+
+    const filePath = path.join(blogsDir, `${slug}.mdx`);
+
+    const wordRules =
+      length === "short"
+        ? "Write at least 250 words."
+        : length === "long"
+        ? "Write at least 1000 words."
+        : "Write at least 600 words.";
 
     const prompt = `
 You are a professional blog writer.
 
-Write a ${length} blog post.
-
 Title: ${title}
-Description: ${description}
-Target Audience: ${audience}
-Writing Style: ${writingStyle}
+Audience: ${audience}
 Tone: ${tone}
 
-Structure:
-- Introduction
-- 3–4 sections with H2 headings
-- Conclusion
+Instructions:
+- ${wordRules}
+- Use clear section headings
+- Add an introduction and a conclusion
+- Explain concepts clearly
+- Do NOT be brief
 
-Rules:
-- Clear paragraphs
-- No emojis
-- Plain markdown only
+Blog:
 `;
 
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
-        process.env.GEMINI_API_KEY,
+    const aiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: prompt }]
-            }
-          ]
-        })
+          contents: [{ parts: [{ text: prompt }] }],
+        }),
       }
     );
 
-    const data = await response.json();
+    const aiData = await aiResponse.json();
+    const blogBody =
+      aiData?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "AI failed to generate content.";
 
-    const content =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!content) {
-      return Response.json(
-        { success: false, raw: data },
-        { status: 500 }
-      );
-    }
-
-    const slug = title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-
-    const filePath = path.join(
-      process.cwd(),
-      "content",
-      "blogs",
-      "dev",
-      `${slug}.mdx`
-    );
-
-    const mdxContent = `---
+    const content = `---
 title: "${title}"
 description: "${description}"
-date: "${new Date().toISOString()}"
+audience: "${audience}"
+tone: "${tone}"
+length: "${length}"
 ---
 
-${content}
+${blogBody}
 `;
 
-    fs.writeFileSync(filePath, mdxContent);
+    fs.writeFileSync(filePath, content, "utf8");
 
-    // ---- AUTO GIT COMMIT & PUSH ----
-    try {
-      execSync("git add content/blogs/dev", { stdio: "ignore" });
-      execSync(`git commit -m "Add blog: ${slug}"`, { stdio: "ignore" });
-      execSync("git push origin main", { stdio: "ignore" });
-    } catch (gitError) {
-      console.error("Git automation failed:", gitError);
-      // Do not fail the request if git push fails
-    }
-    // ---- END AUTO GIT ----
-
-    return Response.json({
-      success: true,
-      slug
-    });
-
-  } catch (error) {
-    console.error(error);
-    return Response.json(
-      { success: false, error: "Something went wrong" },
+    return NextResponse.json({ success: true, slug });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Internal Server Error" },
       { status: 500 }
     );
   }
