@@ -1,7 +1,7 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "AI Blog Generator",
+  title: "AutoBlog AI",
   description: "AI powered blog generator",
 };
 
@@ -12,11 +12,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className="bg-bg text-gray-200 min-h-screen">
+      <body className="bg-bg text-gray-200 min-h-screen w-full">
         <header className="border-b border-white/10">
-          <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div className="w-full px-8 py-4 flex justify-between items-center">
             <h1 className="text-xl font-bold text-accent">
-              AI Blog Generator
+              AutoBlog AI
             </h1>
 
             <nav className="space-x-6 text-sm text-gray-400">
@@ -30,7 +30,7 @@ export default function RootLayout({
           </div>
         </header>
 
-        <main className="max-w-6xl mx-auto px-6 py-10">
+        <main className="w-full py-10 pt-0 px-0">
           {children}
         </main>
       </body>
