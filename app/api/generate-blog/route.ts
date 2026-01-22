@@ -24,16 +24,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const slug = slugify(title, {
-      lower: true,
-      strict: true,
-      trim: true,
-    });
-
-    const blogsDir = path.join(process.cwd(), "content", "blogs", "dev");
-    fs.mkdirSync(blogsDir, { recursive: true });
-
-    const filePath = path.join(blogsDir, `${slug}.mdx`);
+    const slug = slugify(title, { lower: true, strict: true, trim: true });
 
     const wordRules =
       length === "short"
@@ -43,24 +34,24 @@ export async function POST(req: Request) {
         : "Write at least 600 words.";
 
     const prompt = `
-You are a professional blog writer.
+You are an expert blog writer.
 
 Title: ${title}
-Audience: ${audience}
+Audience: ${audience || "General readers"}
 Tone: ${tone}
 
-Instructions:
+Rules:
 - ${wordRules}
 - Use clear section headings
-- Add an introduction and a conclusion
-- Explain concepts clearly
-- Do NOT be brief
+- Start with an introduction
+- End with a conclusion
+- Do not be brief
 
 Blog:
 `;
 
-    const aiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    const aiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -69,11 +60,23 @@ Blog:
         }),
       }
     );
+    console.log("Gemini HTTP status:", aiRes.status);
 
-    const aiData = await aiResponse.json();
-    const blogBody =
-      aiData?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "AI failed to generate content.";
+    const aiData = await aiRes.json();
+    console.log("Gemini raw response:", JSON.stringify(aiData, null, 2));
+
+    const candidate = aiData?.candidates?.[0];
+    let blogBody = "";
+
+    if (candidate?.content?.parts?.length) {
+      blogBody = candidate.content.parts
+        .map((p: any) => p.text)
+        .join("\n");
+    }
+
+    if (!blogBody.trim()) {
+      throw new Error("Gemini returned empty content");
+    }
 
     const content = `---
 title: "${title}"
@@ -86,12 +89,16 @@ length: "${length}"
 ${blogBody}
 `;
 
-    fs.writeFileSync(filePath, content, "utf8");
+    // ✅ WRITE LOCALLY (required for /blogs/[slug])
+    const localDir = path.join(process.cwd(), "content", "blogs", "dev");
+    fs.mkdirSync(localDir, { recursive: true });
+    fs.writeFileSync(path.join(localDir, `${slug}.mdx`), content, "utf8");
 
+    // ✅ IMPORTANT: ALWAYS RETURN A RESPONSE
     return NextResponse.json({ success: true, slug });
-  } catch (error: any) {
+  } catch (err: any) {
     return NextResponse.json(
-      { error: error.message || "Internal Server Error" },
+      { error: err?.message || "Internal Server Error" },
       { status: 500 }
     );
   }
