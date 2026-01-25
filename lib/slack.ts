@@ -1,18 +1,50 @@
-export async function notifySlack(message: string) {
-  const webhookUrl = process.env.SLACK_WEBHOOK_URL;
-
-  console.log("🔔 Slack webhook:", webhookUrl ? "FOUND" : "MISSING");
-
-  if (!webhookUrl) {
-    console.warn("⚠️ SLACK_WEBHOOK_URL not set");
-    return;
-  }
-
-  const res = await fetch(webhookUrl, {
+export async function sendSlackApprovalMessage({
+  title,
+  slug,
+}: {
+  title: string;
+  slug: string;
+}) {
+  const res = await fetch("https://slack.com/api/chat.postMessage", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: message }),
+    headers: {
+      Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      channel: process.env.SLACK_CHANNEL_ID,
+      text: "New blog draft ready",
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `📝 *${title}*\nSlug: \`${slug}\`\nStatus: Draft`,
+          },
+        },
+        {
+          type: "actions",
+          elements: [
+            {
+              type: "button",
+              text: { type: "plain_text", text: "✅ Approve" },
+              style: "primary",
+              value: slug,
+              action_id: "approve_blog",
+            },
+            {
+              type: "button",
+              text: { type: "plain_text", text: "❌ Decline" },
+              style: "danger",
+              value: slug,
+              action_id: "decline_blog",
+            },
+          ],
+        },
+      ],
+    }),
   });
 
-  console.log("🔔 Slack response status:", res.status);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error);
 }
