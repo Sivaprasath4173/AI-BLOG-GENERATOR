@@ -30,39 +30,48 @@ export async function POST(req: Request) {
     const prompt = `
 You are a professional technical blog writer.
 
-Write a LONG, DETAILED blog article of AT LEAST 800 WORDS.
+TASK:
+Write a LONG, ORIGINAL, and DETAILED blog article of AT LEAST 800 WORDS.
 
+IMPORTANT ANTI-ECHO RULES (STRICT):
+- Do NOT repeat the title or description verbatim.
+- Do NOT paraphrase the description sentence-by-sentence.
+- Use the description ONLY as context, not as content.
+- Generate NEW explanations in your own words.
+
+Context (for understanding only, do NOT copy):
 Title: ${title}
-Target Audience: ${audience || "General readers"}
+Audience: ${audience || "General readers"}
 Tone: ${tone}
+Topic Context: ${description}
 
 MANDATORY STRUCTURE:
 ## Introduction
-Write at least two detailed paragraphs introducing the topic.
+Write 2–3 original paragraphs introducing the topic without copying the description.
 
 ## Background / Basics
-Explain the fundamental concepts clearly and in depth.
+Explain fundamentals from first principles.
 
 ## Detailed Explanation
-Provide a deep explanation with examples and sub-points.
+Provide deep explanations with examples and analogies.
 
 ## Real-world Applications
-Describe multiple practical use cases.
+Explain multiple real-life use cases in detail.
 
 ## Advantages and Limitations
-Explain benefits as well as challenges in detail.
+Critically analyze strengths and weaknesses.
 
 ## Conclusion
-Write at least two detailed paragraphs summarizing the topic.
+Write 2–3 original paragraphs summarizing insights and future relevance.
 
 STRICT RULES:
-- Do NOT be brief
 - Each section must contain multiple paragraphs
 - Use markdown headings (##)
+- Do NOT be brief
+- Do NOT reuse user-provided sentences
 - Output ONLY the blog content
-- Do NOT shorten the response
 
-Begin now.
+Begin writing the article now.
 `;
 
     const aiRes = await fetch(
