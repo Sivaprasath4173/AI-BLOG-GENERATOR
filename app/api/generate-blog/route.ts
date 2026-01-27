@@ -27,28 +27,42 @@ export async function POST(req: Request) {
 
     const slug = slugify(title, { lower: true, strict: true, trim: true });
 
-    const wordRules =
-      length === "short"
-        ? "Write at least 250 words."
-        : length === "long"
-        ? "Write at least 1000 words."
-        : "Write at least 600 words.";
-
     const prompt = `
-You are an expert blog writer.
+You are a professional technical blog writer.
+
+Write a LONG, DETAILED blog article of AT LEAST 800 WORDS.
 
 Title: ${title}
-Audience: ${audience || "General readers"}
+Target Audience: ${audience || "General readers"}
 Tone: ${tone}
 
-Rules:
-- ${wordRules}
-- Use clear section headings
-- Start with an introduction
-- End with a conclusion
-- Do not be brief
+MANDATORY STRUCTURE:
+## Introduction
+Write at least two detailed paragraphs introducing the topic.
 
-Blog:
+## Background / Basics
+Explain the fundamental concepts clearly and in depth.
+
+## Detailed Explanation
+Provide a deep explanation with examples and sub-points.
+
+## Real-world Applications
+Describe multiple practical use cases.
+
+## Advantages and Limitations
+Explain benefits as well as challenges in detail.
+
+## Conclusion
+Write at least two detailed paragraphs summarizing the topic.
+
+STRICT RULES:
+- Do NOT be brief
+- Each section must contain multiple paragraphs
+- Use markdown headings (##)
+- Output ONLY the blog content
+- Do NOT shorten the response
+
+Begin now.
 `;
 
     const aiRes = await fetch(
