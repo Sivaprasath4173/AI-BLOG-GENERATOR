@@ -1,5 +1,6 @@
-const IS_VERCEL = !!process.env.VERCEL;
 import { Octokit } from "@octokit/rest";
+
+const IS_VERCEL = !!process.env.VERCEL;
 
 const token = process.env.GITHUB_TOKEN;
 
@@ -23,7 +24,6 @@ export async function commitToGitHub(
   const repo = process.env.GITHUB_REPO;
   const branch = process.env.GITHUB_BRANCH;
 
-  // ===== SAFETY CHECKS (DO NOT BREAK APP) =====
   if (!octokit) {
     console.warn("⚠️ GITHUB_TOKEN missing, skipping GitHub commit");
     return;
@@ -50,9 +50,7 @@ export async function commitToGitHub(
     if (!Array.isArray(data)) {
       sha = data.sha;
     }
-  } catch {
-    // File does not exist yet – this is OK
-  }
+  } catch {}
 
   try {
     await octokit.repos.createOrUpdateFileContents({
