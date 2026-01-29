@@ -9,8 +9,15 @@ export async function sendSlackApprovalMessage(blog: BlogDetails) {
   console.log("🚀 sendSlackApprovalMessage CALLED", blog);
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
 
+  // If Slack is not configured, silently skip (do NOT break blog generation)
   if (!webhookUrl) {
-    console.error("Slack webhook URL missing");
+    console.warn("⚠️ SLACK_WEBHOOK_URL missing, skipping Slack notification");
+    return;
+  }
+
+  // Validate webhook format to avoid fetch crash
+  if (!webhookUrl.startsWith("https://hooks.slack.com/")) {
+    console.error("❌ Invalid SLACK_WEBHOOK_URL format");
     return;
   }
 
@@ -54,19 +61,18 @@ export async function sendSlackApprovalMessage(blog: BlogDetails) {
         elements: [
           {
             type: "button",
-            text: {
-              type: "plain_text",
-              text: "✅ Approve",
-            },
+            text: { type: "plain_text", text: "🔍 Preview Blog" },
+            url: blog.previewUrl,
+          },
+          {
+            type: "button",
+            text: { type: "plain_text", text: "✅ Approve" },
             style: "primary",
             url: `${baseUrl}&action=approve`,
           },
           {
             type: "button",
-            text: {
-              type: "plain_text",
-              text: "❌ Decline",
-            },
+            text: { type: "plain_text", text: "❌ Decline" },
             style: "danger",
             url: `${baseUrl}&action=decline`,
           },
@@ -75,14 +81,22 @@ export async function sendSlackApprovalMessage(blog: BlogDetails) {
     ],
   };
 
-  const res = await fetch(webhookUrl, {
+  // Fire-and-forget Slack notification (never await)
+  fetch(webhookUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
-  });
-
-  const result = await res.text();
-  console.log("Slack response:", result);
+  })
+    .then((res) => res.text())
+    .then((text) => {
+      console.log("✅ Slack message sent");
+    })
+    .catch((err) => {
+      console.error("❌ Slack send failed:", err);
+    });
 }
+
+// Backward-compatible alias
+export const sendSlackApproval = sendSlackApprovalMessage;
